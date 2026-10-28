@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Floor Navigation System | BTech AI &amp; DS — DSA Microproject</title>
+  <meta name="description" content="Interactive campus 3rd-floor navigation using BFS and DFS graph traversal algorithms. BTech AI & DS DSA Microproject." />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- ═══════════════════════════════════ STYLES ═══════════════════════════════════ -->
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080c14;
+      --bg2:       #0d1220;
+      --card:      rgba(255,255,255,0.04);
+      --card-border: rgba(255,255,255,0.08);
+      --primary:   #4f9eff;
+      --cyan:      #00d4ff;
+      --green:     #00ff88;
+      --gold:      #ffd700;
+      --red:       #ff6b6b;
+      --purple:    #a78bfa;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --radius:    14px;
+      --trans:     0.3s ease;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background ambient glow ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(79,158,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0,212,255,0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Header ── */
+    header {
+      position: relative;
+      z-index: 10;
+      background: linear-gradient(135deg, rgba(79,158,255,0.15) 0%, rgba(0,212,255,0.08) 100%);
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(20px);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 14px; }
+
+    .header-icon {
+      width: 46px; height: 46px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      border-radius: 12px;
+      display: grid; place-items: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px rgba(79,158,255,0.4);
+    }
+
+    .header-title h1 {
+      font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #fff 30%, var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .header-title p { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    .header-badge {
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      color: #fff;
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 1px;
+      padding: 4px 12px; border-radius: 20px;
+      text-transform: uppercase;
+    }
+
+    /* ── Tab Navigation ── */
+    .tabs-wrapper {
+      position: relative; z-index: 10;
+      background: rgba(13,18,32,0.8);
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      display: flex; gap: 2px; padding: 10px 28px 0;
+      overflow-x: auto;
+    }
+    .tabs-wrapper::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      background: none; border: none; cursor: pointer;
+      font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 500;
+      color: var(--muted);
+      padding: 10px 18px; border-radius: 10px 10px 0 0;
+      border-bottom: 2px solid transparent;
+      transition: var(--trans); white-space: nowrap;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .tab-btn.active {
+      color: var(--primary); border-bottom-color: var(--primary);
+      background: rgba(79,158,255,0.08);
+    }
+    .tab-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.8; }
+
+    /* ── Main Layout ── */
+    main {
+      position: relative; z-index: 5;
+      max-width: 1280px; margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    /* ── Tab Panels ── */
+    .panel { display: none; animation: fadeUp 0.4s ease; }
+    .panel.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Glass Card ── */
+    .glass {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(16px);
+    }
+
+    .card-title {
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::before {
+      content: ''; display: block;
+      width: 3px; height: 14px; border-radius: 2px;
+      background: linear-gradient(var(--primary), var(--cyan));
+    }
+
+    /* ══════════════════════ PANEL 1: FLOOR MAP ══════════════════════ */
+    .map-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+    }
+    @media(max-width: 860px) { .map-grid { grid-template-columns: 1fr; } }
+
+    .svg-wrap {
+      padding: 24px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    #floorSvg {
+      width: 100%; max-width: 560px; height: auto;
+      overflow: visible;
+    }
+
+    /* SVG node circles */
+    .sv-node {
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .sv-node:hover { transform-origin: center; transform: scale(1.08); }
+
+    .sv-node circle {
+      stroke-width: 2.5;
+      transition: all 0.3s ease;
+      filter: drop-shadow(0 0 8px rgba(79,158,255,0.5));
+    }
+    .sv-node text { font-family: 'Outfit', sans-serif; pointer-events: none; }
+
+    .sv-edge {
+      stroke: rgba(255,255,255,0.18);
+      stroke-width: 2;
+      stroke-linecap: round;
+      transition: stroke 0.3s ease, stroke-width 0.3s ease;
+    }
+    .sv-edge.highlighted {
+      stroke: var(--green);
+      stroke-width: 4;
+      filter: drop-shadow(0 0 6px rgba(0,255,136,0.8));
+      animation: edgePulse 1s ease-in-out infinite;
+    }
+    @keyframes edgePulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.5; }
+    }
+
+    /* Node state classes */
+    .sv-node.state-source   circle { fill: #00c853; stroke: #00e676; }
+    .sv-node.state-dest     circle { fill: #d32f2f; stroke: #ff5252; }
+    .sv-node.state-visiting circle { fill: var(--gold); stroke: #ffecb3; animation: pulse 0.7s ease-in-out infinite; }
+    .sv-node.state-visited  circle { fill: #5c35cc; stroke: var(--purple); }
+    .sv-node.state-path     circle { fill: #00895f; stroke: var(--green); filter: drop-shadow(0 0 12px rgba(0,255,136,0.9)); }
+
+    @keyframes pulse {
+      0%,100% { filter: drop-shadow(0 0 8px rgba(255,215,0,0.6)); }
+      50%      { filter: drop-shadow(0 0 20px rgba(255,215,0,1)); }
+    }
+
+    /* Map legend / info panel */
+    .map-side { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    .legend-item {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.82rem; color: var(--text);
+    }
+    .legend-dot {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    .loc-list { display: flex; flex-direction: column; gap: 8px; }
+    .loc-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: 9px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.83rem; transition: var(--trans); cursor: pointer;
+    }
+    .loc-row:hover { background: rgba(79,158,255,0.08); border-color: rgba(79,158,255,0.25); }
+    .loc-id {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 0.78rem; flex-shrink: 0;
+    }
+
+    /* ══════════════════════ PANEL 2: BFS ══════════════════════ */
+    .algo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media(max-width: 780px) { .algo-grid { grid-template-columns: 1fr; } }
+
+    .algo-map-wrap {
+      padding: 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .ctrl-panel { padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+
+    label { font-size: 0.8rem; color: var(--muted); font-weight: 500; display: block; margin-bottom: 6px; }
+
+    select, .sel {
+      width: 100%; padding: 10px 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 9px; color: var(--text);
+      font-family: 'Outfit', sans-serif; font-size: 0.88rem;
+      outline: none; cursor: pointer;
+      transition: var(--trans);
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    select:focus { border-color: var(--primary); background-color: rgba(79,158,255,0.06); }
+    select option { background: #0d1220; }
+
+    .btn {
+      padding: 12px 22px; border: none; border-radius: 10px; cursor: pointer;
+      font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 600;
+      transition: var(--trans); display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(79,158,255,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(79,158,255,0.5); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      color: var(--text); border: 1px solid var(--card-border);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+    .btn-dfs {
+      background: linear-gradient(135deg, #7c3aed, var(--purple));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(167,139,250,0.35);
+    }
+    .btn-dfs:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(167,139,250,0.5); }
+    .btn-dfs:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Output / Log */
+    .log-box {
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+      min-height: 160px; max-height: 260px;
+      overflow-y: auto; line-height: 1.7;
+      border-radius: var(--radius);
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .log-box::-webkit-scrollbar { width: 4px; }
+    .log-box::-webkit-scrollbar-track { background: transparent; }
+    .log-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+    .log-empty { color: var(--muted); font-style: italic; }
+    .log-step  { color: var(--cyan); }
+    .log-visit { color: #fff; }
+    .log-enq   { color: var(--purple); }
+    .log-path  { color: var(--green); font-weight: 600; }
+    .log-back  { color: #f59e0b; }
+    .log-info  { color: var(--muted); }
+    .log-success { color: var(--green); font-weight: 600; }
+    .log-error { color: var(--red); }
+
+    /* Route result banner */
+    .route-banner {
+      padding: 16px 20px; border-radius: 12px;
+      background: rgba(0,255,136,0.06);
+      border: 1px solid rgba(0,255,136,0.2);
+      display: none; gap: 10px; align-items: flex-start;
+    }
+    .route-banner.show { display: flex; }
+    .route-banner-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .route-banner h3 { font-size: 0.88rem; color: var(--green); margin-bottom: 6px; }
+    .route-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+    .route-node {
+      padding: 4px 12px; border-radius: 20px;
+      background: linear-gradient(135deg, #00895f, var(--green));
+      color: #000; font-weight: 700; font-size: 0.78rem;
+    }
+    .route-arrow { color: var(--green); font-size: 1rem; }
+
+    .no-route-banner {
+      padding: 16px 20px; border-radius: 12px;
+      background: rgba(255,107,107,0.06);
+      border: 1px solid rgba(255,107,107,0.2);
+      display: none;
+    }
+    .no-route-banner.show { display: block; }
+    .no-route-banner p { color: var(--red); font-size: 0.88rem; }
+
+    /* Speed slider */
+    .speed-row { display: flex; align-items: center; gap: 10px; }
+    .speed-row input[type=range] {
+      flex: 1; accent-color: var(--primary); cursor: pointer;
+    }
+    .speed-label { font-size: 0.78rem; color: var(--muted); min-width: 50px; text-align: right; }
+
+    /* ══════════════════════ PANEL 3: LOCATIONS ══════════════════════ */
+    .loc-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .loc-card {
+      padding: 20px; border-radius: var(--radius);
+      background: var(--card); border: 1px solid var(--card-border);
+      transition: var(--trans); text-align: center;
+    }
+    .loc-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(79,158,255,0.35);
+      box-shadow: 0 8px 32px rgba(79,158,255,0.12);
+    }
+    .loc-card-id {
+      width: 48px; height: 48px; border-radius: 12px; margin: 0 auto 12px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      display: grid; place-items: center;
+      font-size: 1.3rem; font-weight: 800;
+      box-shadow: 0 4px 16px rgba(79,158,255,0.35);
+    }
+    .loc-card h3 { font-size: 0.92rem; font-weight: 600; margin-bottom: 6px; }
+    .loc-card p  { font-size: 0.75rem; color: var(--muted); }
+
+    /* ══════════════════════ PANEL 4: CONNECTIONS ══════════════════════ */
+    .adj-list { display: flex; flex-direction: column; gap: 10px; max-width: 700px; }
+    .adj-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px; border-radius: 11px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: var(--trans);
+    }
+    .adj-row:hover { background: rgba(79,158,255,0.06); border-color: rgba(79,158,255,0.2); }
+    .adj-src {
+      min-width: 38px; height: 38px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+    }
+    .adj-name { font-size: 0.88rem; font-weight: 600; min-width: 180px; }
+    .adj-arrow { color: var(--muted); font-size: 1.1rem; }
+    .adj-neighbors { display: flex; gap: 8px; flex-wrap: wrap; }
+    .adj-neighbor {
+      padding: 4px 12px; border-radius: 20px;
+      background: rgba(167,139,250,0.12);
+      border: 1px solid rgba(167,139,250,0.25);
+      color: var(--purple); font-size: 0.78rem; font-weight: 600;
+    }
+
+    /* ══════════════════════ PANEL 5: COMPLEXITY ══════════════════════ */
+    .complexity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+    .complexity-card {
+      padding: 20px; border-radius: var(--radius);
+      background: var(--card); border: 1px solid var(--card-border);
+      transition: var(--trans);
+    }
+    .complexity-card:hover { transform: translateY(-3px); border-color: rgba(79,158,255,0.3); }
+    .complexity-card h3 { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .complexity-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem; font-weight: 700; margin-bottom: 6px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .complexity-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+
+    .algo-comparison {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    @media(max-width: 600px) { .algo-comparison { grid-template-columns: 1fr; } }
+
+    .algo-box { padding: 20px; border-radius: var(--radius); }
+    .algo-box.bfs-box { background: rgba(79,158,255,0.07); border: 1px solid rgba(79,158,255,0.2); }
+    .algo-box.dfs-box { background: rgba(167,139,250,0.07); border: 1px solid rgba(167,139,250,0.2); }
+    .algo-box h3 { font-size: 1rem; margin-bottom: 12px; }
+    .algo-box.bfs-box h3 { color: var(--primary); }
+    .algo-box.dfs-box h3 { color: var(--purple); }
+    .algo-box ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .algo-box ul li { font-size: 0.82rem; color: var(--text); padding-left: 14px; position: relative; line-height: 1.5; }
+    .algo-box ul li::before { content: '▸'; position: absolute; left: 0; color: var(--muted); }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px;
+    }
+    .stat { display: flex; flex-direction: column; gap: 4px; }
+    .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    .stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.4rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* Utilities */
+    .flex-col { display: flex; flex-direction: column; gap: 14px; }
+    .section-head {
+      font-size: 1.1rem; font-weight: 700; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-head span {
+      background: linear-gradient(135deg, var(--text), var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .divider { height: 1px; background: var(--card-border); margin: 8px 0; }
+
+    /* Tooltip on SVG node hover */
+    #tooltip {
+      position: fixed; z-index: 9999;
+      background: rgba(13,18,32,0.95);
+      border: 1px solid var(--card-border);
+      border-radius: 9px; padding: 8px 14px;
+      font-size: 0.8rem; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s;
+      backdrop-filter: blur(12px);
+    }
+
+    /* Info banner at top of each section */
+    .info-note {
+      padding: 12px 18px; border-radius: 10px;
+      background: rgba(79,158,255,0.06);
+      border: 1px solid rgba(79,158,255,0.16);
+      font-size: 0.82rem; color: var(--muted); line-height: 1.6;
+      margin-bottom: 18px;
+    }
+    .info-note strong { color: var(--primary); }
+
+    /* ── SVG text label background ── */
+    .sv-label-bg { fill: rgba(8,12,20,0.85); rx: 5; }
+  </style>
+</head>
+<body>
+
+<!-- ─────────────────── TOOLTIP ─────────────────── -->
+<div id="tooltip"></div>
+
+<!-- ─────────────────── HEADER ─────────────────── -->
+<header>
+  <div class="header-left">
+    <div class="header-icon">🏫</div>
+    <div class="header-title">
+      <h1>Campus Floor Navigation System</h1>
+      <p>3rd Floor · Graph Traversal with BFS &amp; DFS · DSA Microproject</p>
+    </div>
+  </div>
+  <div class="header-badge">BTech AI &amp; DS</div>
+</header>
+
+<!-- ─────────────────── TABS ─────────────────── -->
+<nav class="tabs-wrapper" role="tablist">
+  <button class="tab-btn active" id="tab-map"    onclick="switchTab('map')"        role="tab" aria-selected="true">
+    <span class="tab-dot"></span> Floor Map
+  </button>
+  <button class="tab-btn" id="tab-bfs"    onclick="switchTab('bfs')"        role="tab">
+    <span class="tab-dot"></span> BFS Route Finder
+  </button>
+  <button class="tab-btn" id="tab-dfs"    onclick="switchTab('dfs')"        role="tab">
+    <span class="tab-dot"></span> DFS Explorer
+  </button>
+  <button class="tab-btn" id="tab-locs"   onclick="switchTab('locs')"       role="tab">
+    <span class="tab-dot"></span> Locations
+  </button>
+  <button class="tab-btn" id="tab-conn"   onclick="switchTab('conn')"       role="tab">
+    <span class="tab-dot"></span> Connections
+  </button>
+  <button class="tab-btn" id="tab-info"   onclick="switchTab('info')"       role="tab">
+    <span class="tab-dot"></span> Complexity
+  </button>
+</nav>
+
+<!-- ─────────────────── MAIN ─────────────────── -->
+<main>
+
+  <!-- ═══════════ PANEL: FLOOR MAP ═══════════ -->
+  <section class="panel active" id="panel-map">
+    <div class="section-head">🗺️ <span>3rd Floor Interactive Map</span></div>
+    <p class="info-note">
+      Each <strong>circle</strong> is a location (vertex). Each <strong>line</strong> is a walkable corridor connection (edge).
+      Hover over a node to see its name. Click a node to highlight its connections.
+    </p>
+    <div class="map-grid">
+      <!-- SVG Map -->
+      <div class="glass svg-wrap">
+        <svg id="floorSvg" viewBox="0 0 560 440" aria-label="3rd Floor Map">
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="rgba(0,255,136,0.8)"/>
+            </marker>
+            <radialGradient id="gDefault" cx="50%" cy="40%">
+              <stop offset="0%"   stop-color="#4f9eff"/>
+              <stop offset="100%" stop-color="#0a4080"/>
+            </radialGradient>
+            <radialGradient id="gSource" cx="50%" cy="40%">
+              <stop offset="0%"   stop-color="#00e676"/>
+              <stop offset="100%" stop-color="#00600f"/>
+            </radialGradient>
+            <radialGradient id="gDest" cx="50%" cy="40%">
+              <stop offset="0%"   stop-color="#ff5252"/>
+              <stop offset="100%" stop-color="#7f0000"/>
+            </radialGradient>
+          </defs>
+
+          <!-- Floor outline (visual) -->
+          <rect x="30" y="20" width="500" height="400" rx="18"
+                fill="rgba(79,158,255,0.03)" stroke="rgba(79,158,255,0.1)" stroke-width="1.5"/>
+
+          <!-- Floor label -->
+          <text x="280" y="420" text-anchor="middle" font-family="Outfit,sans-serif"
+                font-size="12" fill="rgba(100,116,139,0.7)" letter-spacing="1">
+            3RD FLOOR — COLLEGE BUILDING
+          </text>
+
+          <!-- EDGES (drawn first so nodes appear on top) -->
+          <g id="svgEdges">
+            <!-- 0-1: Entrance ↔ Girls Washroom -->
+            <line id="edge-0-1" class="sv-edge" x1="280" y1="70" x2="130" y2="210"/>
+            <!-- 0-3: Entrance ↔ Boys Washroom -->
+            <line id="edge-0-3" class="sv-edge" x1="280" y1="70" x2="430" y2="210"/>
+            <!-- 1-2: Girls WR ↔ Lab 303/304 -->
+            <line id="edge-1-2" class="sv-edge" x1="130" y1="210" x2="130" y2="370"/>
+            <!-- 2-3: Lab 303/304 ↔ Boys WR -->
+            <line id="edge-2-3" class="sv-edge" x1="130" y1="370" x2="430" y2="210"/>
+            <!-- 3-4: Boys WR ↔ Lab 318 -->
+            <line id="edge-3-4" class="sv-edge" x1="430" y1="210" x2="430" y2="370"/>
+          </g>
+
+          <!-- Edge labels -->
+          <g font-family="Outfit,sans-serif" font-size="10" fill="rgba(100,116,139,0.65)" text-anchor="middle">
+            <text x="197" y="132">Corridor</text>
+            <text x="363" y="132">Corridor</text>
+            <text x="100" y="296">West Wing</text>
+            <text x="310" y="315">Cross Corridor</text>
+            <text x="462" y="296">East Wing</text>
+          </g>
+
+          <!-- NODES -->
+          <g id="svgNodes">
+            <!-- Node 0: Entrance (Lift) -->
+            <g class="sv-node" id="node-0"
+               onmouseenter="showTooltip(event,'[0] Entrance (Lift)')"
+               onmouseleave="hideTooltip()"
+               onclick="highlightNode(0)">
+              <circle cx="280" cy="70" r="32" fill="url(#gDefault)" stroke="#4f9eff"/>
+              <text x="280" y="65" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">0</text>
+              <text x="280" y="78" text-anchor="middle" font-size="8.5" fill="rgba(255,255,255,0.75)">Lift</text>
+            </g>
+            <!-- Node 1: Girls Washroom -->
+            <g class="sv-node" id="node-1"
+               onmouseenter="showTooltip(event,'[1] Girls Washroom')"
+               onmouseleave="hideTooltip()"
+               onclick="highlightNode(1)">
+              <circle cx="130" cy="210" r="32" fill="url(#gDefault)" stroke="#4f9eff"/>
+              <text x="130" y="205" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">1</text>
+              <text x="130" y="218" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.75)">Girls WR</text>
+            </g>
+            <!-- Node 2: Lab 303/304 -->
+            <g class="sv-node" id="node-2"
+               onmouseenter="showTooltip(event,'[2] Lab 303/304')"
+               onmouseleave="hideTooltip()"
+               onclick="highlightNode(2)">
+              <circle cx="130" cy="370" r="32" fill="url(#gDefault)" stroke="#4f9eff"/>
+              <text x="130" y="365" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">2</text>
+              <text x="130" y="378" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.75)">Lab 303/304</text>
+            </g>
+            <!-- Node 3: Boys Washroom -->
+            <g class="sv-node" id="node-3"
+               onmouseenter="showTooltip(event,'[3] Boys Washroom')"
+               onmouseleave="hideTooltip()"
+               onclick="highlightNode(3)">
+              <circle cx="430" cy="210" r="32" fill="url(#gDefault)" stroke="#4f9eff"/>
+              <text x="430" y="205" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">3</text>
+              <text x="430" y="218" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.75)">Boys WR</text>
+            </g>
+            <!-- Node 4: Lab 318 -->
+            <g class="sv-node" id="node-4"
+               onmouseenter="showTooltip(event,'[4] Lab 318')"
+               onmouseleave="hideTooltip()"
+               onclick="highlightNode(4)">
+              <circle cx="430" cy="370" r="32" fill="url(#gDefault)" stroke="#4f9eff"/>
+              <text x="430" y="365" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">4</text>
+              <text x="430" y="378" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.75)">Lab 318</text>
+            </g>
+          </g>
+
+          <!-- Full node name labels (outside circles) -->
+          <g font-family="Outfit,sans-serif" font-size="11.5" font-weight="600" fill="rgba(226,232,240,0.9)" text-anchor="middle">
+            <text x="280" y="120">Entrance (Lift)</text>
+            <text x="80" y="175">Girls Washroom</text>
+            <text x="80" y="405">Lab 303 / 304</text>
+            <text x="480" y="175">Boys Washroom</text>
+            <text x="480" y="405">Lab 318</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Side info -->
+      <div class="glass map-side">
+        <div class="card-title">Legend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#4f9eff,#0a4080);border:2px solid #4f9eff"></div> Default location</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#00c853;border:2px solid #00e676"></div> Source / Start</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#d32f2f;border:2px solid #ff5252"></div> Destination</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--gold);border:2px solid #ffecb3"></div> Currently Visiting</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#5c35cc;border:2px solid #a78bfa"></div> Visited</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#00895f;border:2px solid #00ff88"></div> On Route Path</div>
+        <div class="divider"></div>
+        <div class="card-title">All Locations</div>
+        <div class="loc-list">
+          <div class="loc-row" onclick="switchTab('bfs')"><div class="loc-id">0</div> Entrance (Lift)</div>
+          <div class="loc-row" onclick="switchTab('bfs')"><div class="loc-id">1</div> Girls Washroom</div>
+          <div class="loc-row" onclick="switchTab('bfs')"><div class="loc-id">2</div> Lab 303/304</div>
+          <div class="loc-row" onclick="switchTab('bfs')"><div class="loc-id">3</div> Boys Washroom</div>
+          <div class="loc-row" onclick="switchTab('bfs')"><div class="loc-id">4</div> Lab 318</div>
+        </div>
+        <div class="divider"></div>
+        <button class="btn btn-primary" onclick="switchTab('bfs')" style="width:100%">
+          🔍 Find a Route
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ PANEL: BFS ═══════════ -->
+  <section class="panel" id="panel-bfs">
+    <div class="section-head">🔵 <span>BFS Route Finder</span></div>
+    <p class="info-note">
+      <strong>BFS (Breadth-First Search)</strong> finds the route with the <strong>fewest corridor hops</strong>.
+      It explores locations level-by-level from the source. Time complexity: <strong>O(V + E)</strong>.
+      Note: fewest hops ≠ shortest physical distance.
+    </p>
+    <div class="algo-grid">
+      <!-- Map -->
+      <div class="glass algo-map-wrap" id="bfsMapWrap">
+        <svg id="bfsSvg" viewBox="0 0 560 440" style="width:100%;max-width:520px;height:auto;overflow:visible">
+          <defs>
+            <radialGradient id="bg2" cx="50%" cy="40%">
+              <stop offset="0%"   stop-color="#4f9eff"/><stop offset="100%" stop-color="#0a4080"/>
+            </radialGradient>
+          </defs>
+          <rect x="30" y="20" width="500" height="400" rx="18"
+                fill="rgba(79,158,255,0.03)" stroke="rgba(79,158,255,0.08)" stroke-width="1.5"/>
+          <g id="bfsEdges">
+            <line id="be-0-1" class="sv-edge" x1="280" y1="70" x2="130" y2="210"/>
+            <line id="be-0-3" class="sv-edge" x1="280" y1="70" x2="430" y2="210"/>
+            <line id="be-1-2" class="sv-edge" x1="130" y1="210" x2="130" y2="370"/>
+            <line id="be-2-3" class="sv-edge" x1="130" y1="370" x2="430" y2="210"/>
+            <line id="be-3-4" class="sv-edge" x1="430" y1="210" x2="430" y2="370"/>
+          </g>
+          <g id="bfsNodes">
+            <g class="sv-node" id="bnode-0"><circle cx="280" cy="70"  r="30" fill="url(#bg2)" stroke="#4f9eff"/>
+              <text x="280" y="65"  text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">0</text>
+              <text x="280" y="77"  text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Lift</text></g>
+            <g class="sv-node" id="bnode-1"><circle cx="130" cy="210" r="30" fill="url(#bg2)" stroke="#4f9eff"/>
+              <text x="130" y="205" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">1</text>
+              <text x="130" y="218" text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Girls WR</text></g>
+            <g class="sv-node" id="bnode-2"><circle cx="130" cy="370" r="30" fill="url(#bg2)" stroke="#4f9eff"/>
+              <text x="130" y="365" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">2</text>
+              <text x="130" y="378" text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Lab 303</text></g>
+            <g class="sv-node" id="bnode-3"><circle cx="430" cy="210" r="30" fill="url(#bg2)" stroke="#4f9eff"/>
+              <text x="430" y="205" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">3</text>
+              <text x="430" y="218" text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Boys WR</text></g>
+            <g class="sv-node" id="bnode-4"><circle cx="430" cy="370" r="30" fill="url(#bg2)" stroke="#4f9eff"/>
+              <text x="430" y="365" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">4</text>
+              <text x="430" y="378" text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Lab 318</text></g>
+          </g>
+          <g font-family="Outfit,sans-serif" font-size="11" font-weight="600" fill="rgba(226,232,240,0.8)" text-anchor="middle">
+            <text x="280" y="118">Entrance (Lift)</text>
+            <text x="80"  y="175">Girls WR</text>
+            <text x="80"  y="405">Lab 303/304</text>
+            <text x="480" y="175">Boys WR</text>
+            <text x="480" y="405">Lab 318</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex-col">
+        <div class="glass ctrl-panel">
+          <div class="card-title">BFS Controls</div>
+          <div>
+            <label for="bfsSrc">📍 Source Location</label>
+            <select id="bfsSrc"></select>
+          </div>
+          <div>
+            <label for="bfsDest">🏁 Destination Location</label>
+            <select id="bfsDest"></select>
+          </div>
+          <div>
+            <label>⚡ Animation Speed</label>
+            <div class="speed-row">
+              <input type="range" id="bfsSpeed" min="200" max="2000" value="800" step="100" oninput="updateSpeedLabel('bfsSpeed','bfsSpeedLbl')"/>
+              <span class="speed-label" id="bfsSpeedLbl">0.8s</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" id="bfsRunBtn" onclick="runBFS()" style="flex:1">
+              ▶ Find Route
+            </button>
+            <button class="btn btn-secondary" onclick="resetBFS()" style="flex:1">
+              ↺ Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- Route result -->
+        <div class="route-banner glass" id="bfsRouteBanner">
+          <div class="route-banner-icon">✅</div>
+          <div>
+            <h3>Route Found!</h3>
+            <div class="route-steps" id="bfsRouteSteps"></div>
+            <p style="font-size:0.75rem;color:var(--muted);margin-top:8px" id="bfsHopsInfo"></p>
+          </div>
+        </div>
+        <div class="no-route-banner glass" id="bfsNoRoute">
+          <p>❌ No route found between these locations. They are in disconnected parts of the graph.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div style="margin-top:20px">
+      <div class="card-title" style="margin-bottom:10px">📋 Step-by-Step BFS Log</div>
+      <div class="log-box glass" id="bfsLog">
+        <span class="log-empty">Select source and destination, then click "Find Route"...</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ PANEL: DFS ═══════════ -->
+  <section class="panel" id="panel-dfs">
+    <div class="section-head">🟣 <span>DFS Explorer</span></div>
+    <p class="info-note">
+      <strong>DFS (Depth-First Search)</strong> explores as <strong>deep as possible</strong> along each path before backtracking.
+      It reveals every reachable location from a starting point. Time complexity: <strong>O(V + E)</strong>.
+      DFS does <em>not</em> guarantee the shortest path.
+    </p>
+    <div class="algo-grid">
+      <!-- Map -->
+      <div class="glass algo-map-wrap">
+        <svg id="dfsSvg" viewBox="0 0 560 440" style="width:100%;max-width:520px;height:auto;overflow:visible">
+          <defs>
+            <radialGradient id="dg2" cx="50%" cy="40%">
+              <stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#2e1065"/>
+            </radialGradient>
+          </defs>
+          <rect x="30" y="20" width="500" height="400" rx="18"
+                fill="rgba(124,58,237,0.03)" stroke="rgba(124,58,237,0.1)" stroke-width="1.5"/>
+          <g id="dfsEdges">
+            <line id="de-0-1" class="sv-edge" x1="280" y1="70" x2="130" y2="210"/>
+            <line id="de-0-3" class="sv-edge" x1="280" y1="70" x2="430" y2="210"/>
+            <line id="de-1-2" class="sv-edge" x1="130" y1="210" x2="130" y2="370"/>
+            <line id="de-2-3" class="sv-edge" x1="130" y1="370" x2="430" y2="210"/>
+            <line id="de-3-4" class="sv-edge" x1="430" y1="210" x2="430" y2="370"/>
+          </g>
+          <g id="dfsNodes">
+            <g class="sv-node" id="dnode-0"><circle cx="280" cy="70"  r="30" fill="url(#dg2)" stroke="#a78bfa"/>
+              <text x="280" y="65"  text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">0</text>
+              <text x="280" y="77"  text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Lift</text></g>
+            <g class="sv-node" id="dnode-1"><circle cx="130" cy="210" r="30" fill="url(#dg2)" stroke="#a78bfa"/>
+              <text x="130" y="205" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">1</text>
+              <text x="130" y="218" text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Girls WR</text></g>
+            <g class="sv-node" id="dnode-2"><circle cx="130" cy="370" r="30" fill="url(#dg2)" stroke="#a78bfa"/>
+              <text x="130" y="365" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">2</text>
+              <text x="130" y="378" text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Lab 303</text></g>
+            <g class="sv-node" id="dnode-3"><circle cx="430" cy="210" r="30" fill="url(#dg2)" stroke="#a78bfa"/>
+              <text x="430" y="205" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">3</text>
+              <text x="430" y="218" text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Boys WR</text></g>
+            <g class="sv-node" id="dnode-4"><circle cx="430" cy="370" r="30" fill="url(#dg2)" stroke="#a78bfa"/>
+              <text x="430" y="365" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Outfit">4</text>
+              <text x="430" y="378" text-anchor="middle" font-size="8"  fill="rgba(255,255,255,0.7)" font-family="Outfit">Lab 318</text></g>
+          </g>
+          <g font-family="Outfit,sans-serif" font-size="11" font-weight="600" fill="rgba(226,232,240,0.8)" text-anchor="middle">
+            <text x="280" y="118">Entrance (Lift)</text>
+            <text x="80"  y="175">Girls WR</text>
+            <text x="80"  y="405">Lab 303/304</text>
+            <text x="480" y="175">Boys WR</text>
+            <text x="480" y="405">Lab 318</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex-col">
+        <div class="glass ctrl-panel">
+          <div class="card-title">DFS Controls</div>
+          <div>
+            <label for="dfsStart">🚀 Starting Location</label>
+            <select id="dfsStart"></select>
+          </div>
+          <div>
+            <label>⚡ Animation Speed</label>
+            <div class="speed-row">
+              <input type="range" id="dfsSpeed" min="200" max="2000" value="800" step="100" oninput="updateSpeedLabel('dfsSpeed','dfsSpeedLbl')"/>
+              <span class="speed-label" id="dfsSpeedLbl">0.8s</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-dfs" id="dfsRunBtn" onclick="runDFS()" style="flex:1">
+              ▶ Explore
+            </button>
+            <button class="btn btn-secondary" onclick="resetDFS()" style="flex:1">
+              ↺ Reset
+            </button>
+          </div>
+        </div>
+
+        <div class="glass ctrl-panel" id="dfsResult" style="display:none">
+          <div class="card-title">DFS Result</div>
+          <div id="dfsReachableInfo" style="font-size:0.85rem;line-height:1.7;color:var(--text)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div style="margin-top:20px">
+      <div class="card-title" style="margin-bottom:10px">📋 Step-by-Step DFS Log</div>
+      <div class="log-box glass" id="dfsLog">
+        <span class="log-empty">Select a starting location and click "Explore"...</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ PANEL: LOCATIONS ═══════════ -->
+  <section class="panel" id="panel-locs">
+    <div class="section-head">📍 <span>All Locations on the 3rd Floor</span></div>
+    <div class="stats-bar">
+      <div class="stat"><span class="stat-label">Total Vertices (V)</span><span class="stat-val">5</span></div>
+      <div class="stat"><span class="stat-label">Total Edges (E)</span><span class="stat-val">5</span></div>
+      <div class="stat"><span class="stat-label">Graph Type</span><span class="stat-val" style="font-size:1rem;margin-top:4px">Undirected</span></div>
+      <div class="stat"><span class="stat-label">Connected?</span><span class="stat-val" style="font-size:1rem;margin-top:4px">Yes ✅</span></div>
+    </div>
+    <div class="loc-cards" id="locCards"></div>
+  </section>
+
+  <!-- ═══════════ PANEL: CONNECTIONS ═══════════ -->
+  <section class="panel" id="panel-conn">
+    <div class="section-head">🔗 <span>Adjacency List (Direct Connections)</span></div>
+    <p class="info-note">
+      The <strong>Adjacency List</strong> is the data structure used to represent the graph in memory.
+      For each location, it shows which other locations are directly reachable in one step.
+      Space complexity: <strong>O(V + E) = O(5 + 5) = O(10)</strong>.
+    </p>
+    <div class="adj-list" id="adjList"></div>
+  </section>
+
+  <!-- ═══════════ PANEL: COMPLEXITY ═══════════ -->
+  <section class="panel" id="panel-info">
+    <div class="section-head">📊 <span>Complexity Analysis</span></div>
+
+    <div class="complexity-grid">
+      <div class="complexity-card glass">
+        <h3>BFS Time</h3><div class="complexity-val">O(V + E)</div>
+        <p>Each vertex is enqueued/dequeued once (O(V)). Each edge is checked once (O(E)). Total = O(V+E) = O(10).</p>
+      </div>
+      <div class="complexity-card glass">
+        <h3>DFS Time</h3><div class="complexity-val">O(V + E)</div>
+        <p>Each vertex is visited once (O(V)). Each edge is explored once (O(E)). Total = O(V+E) = O(10).</p>
+      </div>
+      <div class="complexity-card glass">
+        <h3>BFS Space</h3><div class="complexity-val">O(V)</div>
+        <p>Queue holds at most V vertices. Visited[] and parent[] arrays are each size V. Total = O(V) = O(5).</p>
+      </div>
+      <div class="complexity-card glass">
+        <h3>DFS Space</h3><div class="complexity-val">O(V)</div>
+        <p>Visited[] array = O(V). Recursion call stack depth ≤ V levels in worst case. Total = O(V) = O(5).</p>
+      </div>
+      <div class="complexity-card glass">
+        <h3>Graph Build</h3><div class="complexity-val">O(V + E)</div>
+        <p>Initialising V adjacency lists + inserting E edges. Each edge insertion is O(1) (prepend). Total = O(V+E).</p>
+      </div>
+      <div class="complexity-card glass">
+        <h3>Route Reconstruction</h3><div class="complexity-val">O(L)</div>
+        <p>Trace parent[] array from destination back to source. L = number of vertices in the path. L ≤ V.</p>
+      </div>
+    </div>
+
+    <div class="algo-comparison">
+      <div class="algo-box bfs-box glass">
+        <h3>🔵 BFS — Breadth First Search</h3>
+        <ul>
+          <li>Explores locations level-by-level (1 hop, then 2 hops, …)</li>
+          <li>Uses a <strong>Queue</strong> (FIFO) data structure</li>
+          <li>Guarantees the path with the <strong>fewest hops</strong> in an unweighted graph</li>
+          <li>Does NOT guarantee shortest physical distance (corridors may differ in length)</li>
+          <li>Visits all locations at distance d before visiting any at d+1</li>
+          <li>Good for: route finding, shortest-hop navigation</li>
+        </ul>
+      </div>
+      <div class="algo-box dfs-box glass">
+        <h3>🟣 DFS — Depth First Search</h3>
+        <ul>
+          <li>Explores as deep as possible along each path before backtracking</li>
+          <li>Uses <strong>Recursion</strong> (implicit call stack)</li>
+          <li>Does NOT guarantee any shortest path</li>
+          <li>Useful for checking if all locations are reachable (connectivity)</li>
+          <li>Backtracks when a dead-end (no unvisited neighbors) is reached</li>
+          <li>Good for: exploring all reachable areas, cycle detection</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="glass ctrl-panel" style="margin-top:20px;max-width:600px">
+      <div class="card-title">For This Project (V=5, E=5)</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:2;color:var(--text)">
+        BFS Time  = O(V+E) = O(5+5) = <span style="color:var(--green)">O(10) ≈ constant</span><br>
+        DFS Time  = O(V+E) = O(5+5) = <span style="color:var(--green)">O(10) ≈ constant</span><br>
+        BFS Space = O(V)   = O(5)   = <span style="color:var(--cyan)">O(5)  ≈ constant</span><br>
+        DFS Space = O(V)   = O(5)   = <span style="color:var(--cyan)">O(5)  ≈ constant</span><br>
+        <span style="color:var(--muted)">Adjacency List (graph) = O(V+E) = O(10) memory cells</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════════ JAVASCRIPT ═══════════════════════════════════ -->
+<script>
+/* ── Graph data ── */
+const G = {
+  V: 5,
+  names: [
+    'Entrance (Lift)',
+    'Girls Washroom',
+    'Lab 303/304',
+    'Boys Washroom',
+    'Lab 318'
+  ],
+  icons: ['🛗', '🚺', '🖥️', '🚹', '🔬'],
+  desc: [
+    'Main lift lobby — entry point to the 3rd floor',
+    'Ladies washroom on the west side of the floor',
+    'Computer lab with 30+ workstations (West Wing)',
+    'Gents washroom on the east side of the floor',
+    'Electronics & circuits lab (East Wing)'
+  ],
+  adj: [
+    [1, 3],      // 0: Entrance connects to 1 (Girls WR) and 3 (Boys WR)
+    [0, 2],      // 1: Girls WR connects to 0 (Entrance) and 2 (Lab 303)
+    [1, 3],      // 2: Lab 303 connects to 1 (Girls WR) and 3 (Boys WR)
+    [0, 2, 4],   // 3: Boys WR connects to 0 (Entrance), 2 (Lab 303), 4 (Lab 318)
+    [3]          // 4: Lab 318 connects to 3 (Boys WR)
+  ],
+  edges: [[0,1],[0,3],[1,2],[2,3],[3,4]]
+};
+
+/* ── Helper: edge key for SVG id ── */
+function edgeKey(a, b) {
+  return `${Math.min(a,b)}-${Math.max(a,b)}`;
+}
+
+/* ══════════════ TAB SWITCHING ══════════════ */
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+/* ══════════════ TOOLTIP ══════════════ */
+const tooltip = document.getElementById('tooltip');
+function showTooltip(e, text) {
+  tooltip.textContent = text;
+  tooltip.style.opacity = '1';
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top  = (e.clientY - 10) + 'px';
+}
+function hideTooltip() { tooltip.style.opacity = '0'; }
+
+/* ══════════════ HIGHLIGHT NODE (Floor Map panel) ══════════════ */
+function highlightNode(id) {
+  // Reset all
+  for (let i = 0; i < G.V; i++) {
+    const el = document.getElementById('node-' + i);
+    if (el) el.className.baseVal = 'sv-node';
+  }
+  G.edges.forEach(([a,b]) => {
+    const el = document.getElementById(`edge-${edgeKey(a,b)}`);
+    if (el) el.classList.remove('highlighted');
+  });
+  // Highlight this node and its connected edges
+  const el = document.getElementById('node-' + id);
+  if (el) el.className.baseVal = 'sv-node state-visiting';
+  G.adj[id].forEach(nb => {
+    const el2 = document.getElementById(`edge-${edgeKey(id, nb)}`);
+    if (el2) el2.classList.add('highlighted');
+  });
+}
+
+/* ══════════════ SPEED LABEL ══════════════ */
+function updateSpeedLabel(sliderId, labelId) {
+  const val = document.getElementById(sliderId).value;
+  document.getElementById(labelId).textContent = (val / 1000).toFixed(1) + 's';
+}
+
+/* ══════════════ POPULATE SELECTS ══════════════ */
+function populateSelects() {
+  ['bfsSrc','bfsDest','dfsStart'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = G.names.map((n, i) => `<option value="${i}">[${i}] ${n}</option>`).join('');
+  });
+  // Default: src=0 dest=4
+  document.getElementById('bfsDest').value = '4';
+}
+
+/* ══════════════ POPULATE LOCATIONS CARDS ══════════════ */
+function buildLocCards() {
+  const container = document.getElementById('locCards');
+  container.innerHTML = G.names.map((name, i) => `
+    <div class="loc-card">
+      <div class="loc-card-id">${G.icons[i]}</div>
+      <h3>[${i}] ${name}</h3>
+      <p>${G.desc[i]}</p>
+    </div>
+  `).join('');
+}
+
+/* ══════════════ POPULATE ADJACENCY LIST ══════════════ */
+function buildAdjList() {
+  const container = document.getElementById('adjList');
+  container.innerHTML = G.adj.map((neighbors, i) => `
+    <div class="adj-row">
+      <div class="adj-src">${i}</div>
+      <div class="adj-name">${G.icons[i]} ${G.names[i]}</div>
+      <div class="adj-arrow">→</div>
+      <div class="adj-neighbors">
+        ${neighbors.map(n => `<span class="adj-neighbor">[${n}] ${G.names[n]}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════
+   BFS  IMPLEMENTATION
+══════════════════════════════════════ */
+let bfsAnimating = false;
+
+function bfsCompute(src, dest) {
+  /* Returns { steps, path, found, parent } */
+  const visited = new Array(G.V).fill(false);
+  const parent  = new Array(G.V).fill(-1);
+  const steps   = [];
+  const queue   = [src];
+  visited[src]  = true;
+  let found     = false;
+
+  steps.push({ type: 'init', node: src });
+
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    steps.push({ type: 'dequeue', node: cur, queue: [...queue] });
+
+    if (cur === dest) { found = true; break; }
+
+    for (const nb of G.adj[cur]) {
+      if (!visited[nb]) {
+        visited[nb]  = true;
+        parent[nb]   = cur;
+        queue.push(nb);
+        steps.push({ type: 'enqueue', node: nb, from: cur, queue: [...queue] });
+      }
+    }
+  }
+
+  // Reconstruct path
+  let path = [];
+  if (found) {
+    let c = dest;
+    while (c !== -1) { path.unshift(c); c = parent[c]; }
+  }
+  return { steps, path, found, parent };
+}
+
+function resetBFSMap() {
+  for (let i = 0; i < G.V; i++) {
+    const el = document.getElementById('bnode-' + i);
+    if (el) el.className.baseVal = 'sv-node';
+  }
+  G.edges.forEach(([a,b]) => {
+    const el = document.getElementById(`be-${edgeKey(a,b)}`);
+    if (el) { el.classList.remove('highlighted'); el.style.stroke=''; el.style.strokeWidth=''; }
+  });
+}
+
+function setBNodeState(id, state) {
+  const el = document.getElementById('bnode-' + id);
+  if (el) el.className.baseVal = 'sv-node ' + (state ? 'state-' + state : '');
+}
+
+function setBEdge(a, b, on) {
+  const el = document.getElementById(`be-${edgeKey(a,b)}`);
+  if (!el) return;
+  if (on) el.classList.add('highlighted'); else el.classList.remove('highlighted');
+}
+
+async function runBFS() {
+  if (bfsAnimating) return;
+  bfsAnimating = true;
+  document.getElementById('bfsRunBtn').disabled = true;
+
+  const src  = parseInt(document.getElementById('bfsSrc').value);
+  const dest = parseInt(document.getElementById('bfsDest').value);
+  const speed = parseInt(document.getElementById('bfsSpeed').value);
+
+  // Hide banners
+  document.getElementById('bfsRouteBanner').classList.remove('show');
+  document.getElementById('bfsNoRoute').classList.remove('show');
+
+  // Reset map
+  resetBFSMap();
+
+  // Source = dest special case
+  if (src === dest) {
+    appendLog('bfsLog', `⚠️ Source and destination are the same: [${src}] ${G.names[src]}.`, 'log-error');
+    bfsAnimating = false;
+    document.getElementById('bfsRunBtn').disabled = false;
+    return;
+  }
+
+  // Clear log
+  document.getElementById('bfsLog').innerHTML = '';
+  logLine('bfsLog', `🔵 BFS starting from [${src}] ${G.names[src]} → [${dest}] ${G.names[dest]}`, 'log-step');
+  logLine('bfsLog', `   Queue: [${src}]  |  Visited: {${src}}`, 'log-info');
+
+  setBNodeState(src, 'source');
+  await delay(speed);
+
+  const { steps, path, found } = bfsCompute(src, dest);
+  const visitedSet = new Set([src]);
+  let stepNum = 1;
+
+  for (const step of steps) {
+    if (step.type === 'init') continue;
+
+    if (step.type === 'dequeue') {
+      setBNodeState(step.node, step.node === src ? 'source' : step.node === dest ? 'dest' : 'visiting');
+      logLine('bfsLog',
+        `Step ${stepNum++}: Dequeue [${step.node}] ${G.names[step.node]}` +
+        `  |  Queue: [${step.queue.join(', ')}]`,
+        step.node === dest ? 'log-success' : 'log-visit');
+      await delay(speed);
+    }
+
+    if (step.type === 'enqueue') {
+      visitedSet.add(step.node);
+      if (step.node !== dest) setBNodeState(step.node, 'visited');
+      setBEdge(step.from, step.node, true);
+      logLine('bfsLog',
+        `Step ${stepNum++}: Enqueue [${step.node}] ${G.names[step.node]}` +
+        `  (via [${step.from}])  |  Queue: [${step.queue.join(', ')}]`,
+        'log-enq');
+      await delay(speed / 2);
+    }
+  }
+
+  await delay(speed);
+
+  if (found) {
+    // Highlight path
+    logLine('bfsLog', '', 'log-info');
+    logLine('bfsLog', `✅ Route found! (${path.length - 1} hop${path.length - 1 !== 1 ? 's' : ''})`, 'log-success');
+    logLine('bfsLog', `   Path: ${path.map(n => `[${n}]${G.names[n]}`).join(' → ')}`, 'log-path');
+
+    // Mark path on map
+    resetBFSMap();
+    for (const n of path) setBNodeState(n, 'path');
+    setBNodeState(src,  'source');
+    setBNodeState(dest, 'dest');
+    for (let i = 0; i < path.length - 1; i++) setBEdge(path[i], path[i+1], true);
+
+    // Show banner
+    const banner = document.getElementById('bfsRouteBanner');
+    const steps_el = document.getElementById('bfsRouteSteps');
+    steps_el.innerHTML = path.map((n, i) => `
+      ${i > 0 ? '<span class="route-arrow">→</span>' : ''}
+      <span class="route-node">[${n}] ${G.names[n]}</span>
+    `).join('');
+    document.getElementById('bfsHopsInfo').textContent =
+      `Total hops: ${path.length - 1} | Locations visited during BFS: ${visitedSet.size}`;
+    banner.classList.add('show');
+  } else {
+    logLine('bfsLog', `❌ No route found from [${src}] to [${dest}].`, 'log-error');
+    document.getElementById('bfsNoRoute').classList.add('show');
+  }
+
+  bfsAnimating = false;
+  document.getElementById('bfsRunBtn').disabled = false;
+}
+
+function resetBFS() {
+  if (bfsAnimating) return;
+  resetBFSMap();
+  document.getElementById('bfsLog').innerHTML =
+    '<span class="log-empty">Select source and destination, then click "Find Route"...</span>';
+  document.getElementById('bfsRouteBanner').classList.remove('show');
+  document.getElementById('bfsNoRoute').classList.remove('show');
+}
+
+/* ══════════════════════════════════════
+   DFS  IMPLEMENTATION
+══════════════════════════════════════ */
+let dfsAnimating = false;
+let dfsSteps = [];
+
+function dfsCompute(start) {
+  const visited = new Array(G.V).fill(false);
+  const steps   = [];
+
+  function helper(v, depth) {
+    visited[v] = true;
+    steps.push({ type: 'visit', node: v, depth });
+    for (const nb of G.adj[v]) {
+      if (!visited[nb]) {
+        steps.push({ type: 'deeper', from: v, to: nb, depth });
+        helper(nb, depth + 1);
+        steps.push({ type: 'backtrack', from: nb, to: v, depth });
+      }
+    }
+  }
+
+  helper(start, 0);
+  return { steps, visited };
+}
+
+function resetDFSMap() {
+  for (let i = 0; i < G.V; i++) {
+    const el = document.getElementById('dnode-' + i);
+    if (el) el.className.baseVal = 'sv-node';
+  }
+  G.edges.forEach(([a,b]) => {
+    const el = document.getElementById(`de-${edgeKey(a,b)}`);
+    if (el) el.classList.remove('highlighted');
+  });
+}
+
+function setDNodeState(id, state) {
+  const el = document.getElementById('dnode-' + id);
+  if (el) el.className.baseVal = 'sv-node ' + (state ? 'state-' + state : '');
+}
+
+function setDEdge(a, b, on) {
+  const el = document.getElementById(`de-${edgeKey(a,b)}`);
+  if (!el) return;
+  if (on) el.classList.add('highlighted'); else el.classList.remove('highlighted');
+}
+
+async function runDFS() {
+  if (dfsAnimating) return;
+  dfsAnimating = true;
+  document.getElementById('dfsRunBtn').disabled = true;
+
+  const start = parseInt(document.getElementById('dfsStart').value);
+  const speed  = parseInt(document.getElementById('dfsSpeed').value);
+
+  resetDFSMap();
+  document.getElementById('dfsLog').innerHTML = '';
+  document.getElementById('dfsResult').style.display = 'none';
+
+  logLine('dfsLog', `🟣 DFS starting from [${start}] ${G.names[start]}`, 'log-step');
+  logLine('dfsLog', `   (going as deep as possible before backtracking)`, 'log-info');
+
+  setDNodeState(start, 'source');
+  await delay(speed);
+
+  const { steps, visited } = dfsCompute(start);
+  let stepNum = 1;
+
+  for (const step of steps) {
+    if (step.type === 'visit') {
+      const indent = '  '.repeat(step.depth);
+      logLine('dfsLog',
+        `${indent}Step ${stepNum++}: Visited [${step.node}] ${G.names[step.node]}`,
+        'log-visit');
+      setDNodeState(step.node, 'visiting');
+      await delay(speed);
+      setDNodeState(step.node, 'visited');
+    }
+    if (step.type === 'deeper') {
+      const indent = '  '.repeat(step.depth + 1);
+      logLine('dfsLog',
+        `${indent}↳ Going deeper → [${step.to}] ${G.names[step.to]}`,
+        'log-path');
+      setDEdge(step.from, step.to, true);
+      await delay(speed / 3);
+    }
+    if (step.type === 'backtrack') {
+      const indent = '  '.repeat(step.depth + 1);
+      logLine('dfsLog',
+        `${indent}↩ Backtracked to [${step.to}] ${G.names[step.to]}`,
+        'log-back');
+      await delay(speed / 3);
+    }
+  }
+
+  const reachCount = visited.filter(Boolean).length;
+  logLine('dfsLog', '', 'log-info');
+  logLine('dfsLog', `✅ DFS complete. ${reachCount}/${G.V} locations reachable from [${start}] ${G.names[start]}.`, 'log-success');
+  if (reachCount === G.V) {
+    logLine('dfsLog', `   All locations on this floor are connected! ✅`, 'log-success');
+  }
+
+  // Show result panel
+  const resultEl = document.getElementById('dfsResult');
+  const infoEl   = document.getElementById('dfsReachableInfo');
+  infoEl.innerHTML = `
+    <strong style="color:var(--green)">Reachable: ${reachCount} / ${G.V} locations</strong><br><br>
+    ${G.names.map((n, i) => `
+      <span style="color:${visited[i] ? 'var(--green)' : 'var(--red)'}">
+        ${visited[i] ? '✅' : '❌'} [${i}] ${n}
+      </span><br>
+    `).join('')}
+    <br>
+    <span style="color:var(--muted)">DFS Order: ${steps.filter(s=>s.type==='visit').map(s=>`[${s.node}]`).join(' → ')}</span>
+  `;
+  resultEl.style.display = 'block';
+
+  dfsAnimating = false;
+  document.getElementById('dfsRunBtn').disabled = false;
+}
+
+function resetDFS() {
+  if (dfsAnimating) return;
+  resetDFSMap();
+  document.getElementById('dfsLog').innerHTML =
+    '<span class="log-empty">Select a starting location and click "Explore"...</span>';
+  document.getElementById('dfsResult').style.display = 'none';
+}
+
+/* ══════════════ UTILITIES ══════════════ */
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function logLine(boxId, text, cls) {
+  const box = document.getElementById(boxId);
+  const div = document.createElement('div');
+  div.className = cls || '';
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function appendLog(boxId, text, cls) {
+  const box = document.getElementById(boxId);
+  box.innerHTML = '';
+  logLine(boxId, text, cls);
+}
+
+/* ══════════════ INIT ══════════════ */
+(function init() {
+  populateSelects();
+  buildLocCards();
+  buildAdjList();
+  updateSpeedLabel('bfsSpeed', 'bfsSpeedLbl');
+  updateSpeedLabel('dfsSpeed', 'dfsSpeedLbl');
+})();
+</script>
+</body>
+</html>
